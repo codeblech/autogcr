@@ -2,12 +2,13 @@ import nodriver as uc
 import os
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from dotenv import load_dotenv
-import json
-import asyncio
+import requests
 from asyncio import TimeoutError
-
+import random
+import string
 load_dotenv()
 
+SLEEP_MULTIPLIER = 1
 BASE_URL = "https://classroom.google.com"
 email = os.environ.get("email")
 password = os.environ.get("password")
@@ -17,21 +18,21 @@ async def perform_login(tab):
     email_input_box = await tab.select("input[type=email]")
     print("sending email keys")
     await email_input_box.send_keys(email)
-    await tab.sleep(2)
+    await tab.sleep(2 * SLEEP_MULTIPLIER)
     next_button = await tab.find("Next", best_match=True)
     print("clicking next button")
     await next_button.mouse_click()
 
-    await tab.sleep(5)
+    await tab.sleep(5 * SLEEP_MULTIPLIER)
 
     password_input_box = await tab.select("input[type=password]")
     print("sending password keys")
     await password_input_box.send_keys(password)
-    await tab.sleep(2)
+    await tab.sleep(2 * SLEEP_MULTIPLIER)
     next_button = await tab.find("Next", best_match=True)
     print("clicking next button")
     await next_button.mouse_click()
-    await tab.sleep(5)
+    await tab.sleep(5 * SLEEP_MULTIPLIER)
 
     if await tab.find("2-Step Verification", best_match=True):
         print("Please perform 2-Step Verification manually")
@@ -44,7 +45,7 @@ async def get_assignment_page_urls(tab):
             # assignment_button = await tab.wait_for(selector="a.nUg0Te", timeout=10)
             # assignment_buttons = await tab.query_selector_all("a.nUg0Te")
             assignment_button = await tab.wait_for(
-                selector="li.MHxtic.QRiHXd", timeout=10
+                selector="li.MHxtic.QRiHXd", timeout=10 * SLEEP_MULTIPLIER
             )
             assignment_buttons = await tab.query_selector_all("li.MHxtic.QRiHXd")
 
@@ -82,8 +83,8 @@ async def get_assignment_page_urls(tab):
 
         except TimeoutError as e:
             print("Checking if we're logged in")
-            check1 = await tab.wait_for(text="To-do", timeout=100)
-            check2 = await tab.wait_for(text="Assigned", timeout=100)
+            check1 = await tab.wait_for(text="To-do", timeout=10 * SLEEP_MULTIPLIER)
+            check2 = await tab.wait_for(text="Assigned", timeout=10 * SLEEP_MULTIPLIER)
             if check1 and check2:
                 print("We're logged in. No assignments found")
                 return
@@ -101,7 +102,7 @@ async def get_assignment_file_urls(browser, assignment_metadata):
         assignment_page_tab = await browser.get(assignment_page_url, new_tab=True)
         try:
             assignment_file_button = await assignment_page_tab.wait_for(
-                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=10
+                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=10 * SLEEP_MULTIPLIER
             )
             assignment_file_buttons = await assignment_page_tab.query_selector_all(
                 "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
@@ -128,11 +129,38 @@ async def main():
         browser_executable_path="/usr/bin/google-chrome",
         # sandbox=False,
     )
-    tab = await browser.get(not_turned_in_endpoint)
+    tab = await browser.get(missing_endpoint)
 
-    assignment_page_urls = await get_assignment_page_urls(tab)
-    page_url_to_file_url = await get_assignment_file_urls(browser, assignment_page_urls)
-    print(page_url_to_file_url)
+    assignment_metadata = await get_assignment_page_urls(tab)
+    assignment_metadata = await get_assignment_file_urls(browser, assignment_metadata)
+
+    requests_style_cookies = await browser.cookies.get_all(requests_cookie_format=True)
+
+    # use in requests:
+    session = requests.Session()
+    for cookie in requests_style_cookies:
+        session.cookies.set_cookie(cookie)
+
+    for assignment_name, assignment_file_urls in zip(
+        assignment_metadata["assignment_names"],
+        assignment_metadata["assignment_file_urls"],
+    ):
+        print(assignment_name, assignment_file_urls)
+        if not assignment_file_urls:
+            print("No files found for assignment: ", assignment_name)
+            continue
+        for assignment_file_url in assignment_file_urls:
+            print('abc')
+            response = session.get(assignment_file_url, stream=True)
+            print('def')
+            filename = random.choice(string.ascii_letters)
+            with open(filename, 'wb') as f:
+                print('ghi')
+                for chunk in response.iter_content(chunk_size=8192):
+                    print("x")
+                    if chunk:
+                        print("y")
+                        f.write(chunk)
 
 
 if __name__ == "__main__":

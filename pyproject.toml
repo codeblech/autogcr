@@ -9,6 +9,8 @@ readme = "README.md"
 python = "^3.10"
 nodriver = "^0.38.post1"
 python-dotenv = "^1.0.1"
+requests = "^2.32.3"
+hrequests = "^0.9.2"
 
 
 [build-system]
