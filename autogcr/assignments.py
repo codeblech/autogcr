@@ -78,7 +78,6 @@ async def get_assignment_page_urls(tab):
                 "assignment_due_dates": assignment_due_dates,
                 "assignment_page_urls": assignment_page_urls,
             }
-            print(assignment_metadata)
             return assignment_metadata
 
         except TimeoutError as e:
@@ -113,15 +112,14 @@ async def get_assignment_file_urls(browser, assignment_metadata):
             assignment_file_urls.append(assignment_file_urls_current)
 
         except TimeoutError:
+            assignment_file_urls.append([])
             print("No attachment found for assignment with url: ", assignment_page_url)
 
         await assignment_page_tab.close()
 
-
     assignment_metadata["assignment_file_urls"] = assignment_file_urls
     print(assignment_metadata)
     return assignment_metadata
-
 
 
 async def main():
