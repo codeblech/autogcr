@@ -98,11 +98,11 @@ async def get_assignment_file_urls(browser, assignment_metadata):
     assignment_page_urls = assignment_metadata["assignment_page_urls"]
 
     assignment_file_urls = []
-    async def fetch_file_urls(assignment_page_url):
+    for assignment_page_url in assignment_page_urls:
         assignment_page_tab = await browser.get(assignment_page_url, new_tab=True)
         try:
             assignment_file_button = await assignment_page_tab.wait_for(
-                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=100
+                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=10
             )
             assignment_file_buttons = await assignment_page_tab.query_selector_all(
                 "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
@@ -117,7 +117,7 @@ async def get_assignment_file_urls(browser, assignment_metadata):
 
         await assignment_page_tab.close()
 
-    await asyncio.gather(*[fetch_file_urls(assignment_page_url) for assignment_page_url in assignment_page_urls])
+
     assignment_metadata["assignment_file_urls"] = assignment_file_urls
     print(assignment_metadata)
     return assignment_metadata
