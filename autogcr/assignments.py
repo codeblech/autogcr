@@ -9,9 +9,11 @@ import string
 load_dotenv()
 
 SLEEP_MULTIPLIER = 1
+
 BASE_URL = "https://classroom.google.com"
-email = os.environ.get("email")
-password = os.environ.get("password")
+email = os.environ.get("EMAIL")
+password = os.environ.get("PASSWORD")
+download_directory = os.environ.get("DEFAULT_DOWNLOAD_DIRECTORY")
 
 
 async def perform_login(tab):
@@ -132,36 +134,25 @@ async def main():
     tab = await browser.get(missing_endpoint)
 
     assignment_metadata = await get_assignment_page_urls(tab)
+    # tab.close()
     assignment_metadata = await get_assignment_file_urls(browser, assignment_metadata)
 
-    requests_style_cookies = await browser.cookies.get_all(requests_cookie_format=True)
-
-    # use in requests:
-    session = requests.Session()
-    for cookie in requests_style_cookies:
-        session.cookies.set_cookie(cookie)
 
     for assignment_name, assignment_file_urls in zip(
         assignment_metadata["assignment_names"],
         assignment_metadata["assignment_file_urls"],
     ):
-        print(assignment_name, assignment_file_urls)
-        if not assignment_file_urls:
-            print("No files found for assignment: ", assignment_name)
-            continue
         for assignment_file_url in assignment_file_urls:
-            print('abc')
-            response = session.get(assignment_file_url, stream=True)
-            print('def')
-            filename = random.choice(string.ascii_letters)
-            with open(filename, 'wb') as f:
-                print('ghi')
-                for chunk in response.iter_content(chunk_size=8192):
-                    print("x")
-                    if chunk:
-                        print("y")
-                        f.write(chunk)
-
+            file_tab = await browser.get(assignment_file_url, new_tab=True)
+            try:
+                download_button = await file_tab.wait_for(selector="div.ndfHFb-c4YZDc-Bz112c.ndfHFb-c4YZDc-C7uZwb-LgbsSe-Bz112c.ndfHFb-c4YZDc-nupQLb-Bz112c", timeout=10 * SLEEP_MULTIPLIER)
+                await browser.wait(5 * SLEEP_MULTIPLIER)
+                await download_button.mouse_click()
+                await browser.wait(5 * SLEEP_MULTIPLIER)
+            except TimeoutError:
+                print("No download button found for file with url: ", assignment_file_url)
+                continue
+    await browser.wait(1000)
 
 if __name__ == "__main__":
 
