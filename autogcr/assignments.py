@@ -109,10 +109,10 @@ async def get_assignment_file_urls(browser, assignment_metadata):
             assignment_file_buttons = await assignment_page_tab.query_selector_all(
                 "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
             )
-            assignment_file_urls_current = [
+            assignment_file_urls.append([
                 btn.__getattr__("href") for btn in assignment_file_buttons
-            ]
-            assignment_file_urls.append(assignment_file_urls_current)
+            ])
+
 
         except TimeoutError:
             assignment_file_urls.append([])
@@ -121,7 +121,7 @@ async def get_assignment_file_urls(browser, assignment_metadata):
         await assignment_page_tab.close()
 
     assignment_metadata["assignment_file_urls"] = assignment_file_urls
-    print(assignment_metadata)
+
     return assignment_metadata
 
 
@@ -137,21 +137,34 @@ async def main():
     # tab.close()
     assignment_metadata = await get_assignment_file_urls(browser, assignment_metadata)
 
-
+    assignment_file_names = []
     for assignment_name, assignment_file_urls in zip(
         assignment_metadata["assignment_names"],
         assignment_metadata["assignment_file_urls"],
     ):
+        assignment_file_names_current = []
         for assignment_file_url in assignment_file_urls:
             file_tab = await browser.get(assignment_file_url, new_tab=True)
             try:
                 download_button = await file_tab.wait_for(selector="div.ndfHFb-c4YZDc-Bz112c.ndfHFb-c4YZDc-C7uZwb-LgbsSe-Bz112c.ndfHFb-c4YZDc-nupQLb-Bz112c", timeout=10 * SLEEP_MULTIPLIER)
                 await browser.wait(5 * SLEEP_MULTIPLIER)
+                assignment_file_name_tag = await file_tab.query_selector(
+                    selector="meta[property='og:title']"
+                )
+                assignment_file_name = assignment_file_name_tag.__getattr__("content")
+                assignment_file_names_current.append(assignment_file_name)
+
                 await download_button.mouse_click()
                 await browser.wait(5 * SLEEP_MULTIPLIER)
             except TimeoutError:
                 print("No download button found for file with url: ", assignment_file_url)
                 continue
+
+        assignment_file_names.append(assignment_file_names_current)
+
+    assignment_metadata["assignment_file_names"] = assignment_file_names
+    print(assignment_metadata)
+
     await browser.wait(1000)
 
 if __name__ == "__main__":
