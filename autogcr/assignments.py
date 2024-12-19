@@ -3,6 +3,7 @@ import os
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from dotenv import load_dotenv
 import json
+import asyncio
 from asyncio import TimeoutError
 
 load_dotenv()
@@ -40,13 +41,45 @@ async def perform_login(tab):
 async def get_assignment_page_urls(tab):
     while True:
         try:
-            assignment_button = await tab.wait_for(selector="a.nUg0Te", timeout=10)
-            assignment_buttons = await tab.query_selector_all("a.nUg0Te")
+            # assignment_button = await tab.wait_for(selector="a.nUg0Te", timeout=10)
+            # assignment_buttons = await tab.query_selector_all("a.nUg0Te")
+            assignment_button = await tab.wait_for(
+                selector="li.MHxtic.QRiHXd", timeout=10
+            )
+            assignment_buttons = await tab.query_selector_all("li.MHxtic.QRiHXd")
+
+            # Find urls for assignment pages
+            assignment_page_button_a_tags = [
+                await btn.query_selector("a.nUg0Te") for btn in assignment_buttons
+            ]
             assignment_page_urls = [
-                btn.__getattr__("href") for btn in assignment_buttons
+                btn.__getattr__("href") for btn in assignment_page_button_a_tags
             ]
             assignment_page_urls = [BASE_URL + url for url in assignment_page_urls]
-            return assignment_page_urls
+
+            # Find names of assignments
+            assignment_names = [
+                await btn.query_selector("p.asQXV.oDLUVd.YVvGBb")
+                for btn in assignment_buttons
+            ]
+            assignment_names = [name.text for name in assignment_names]
+
+            # Find due dates of assignments
+            assignment_due_dates = [
+                await btn.query_selector("p.EhRlC.tGZ0W.pOf0gc")
+                for btn in assignment_buttons
+            ]
+            assignment_due_dates = [
+                date.text if date is not None else "No due date"
+                for date in assignment_due_dates
+            ]
+            assignment_metadata = {
+                "assignment_names": assignment_names,
+                "assignment_due_dates": assignment_due_dates,
+                "assignment_page_urls": assignment_page_urls,
+            }
+            print(assignment_metadata)
+            return assignment_metadata
 
         except TimeoutError as e:
             print("Checking if we're logged in")
@@ -61,30 +94,34 @@ async def get_assignment_page_urls(tab):
             continue
 
 
-async def get_assignment_file_urls(browser, assignment_page_urls):
+async def get_assignment_file_urls(browser, assignment_metadata):
+    assignment_page_urls = assignment_metadata["assignment_page_urls"]
 
-    page_url_to_file_url = {}
-
-    for url in assignment_page_urls:
-        assignment_page_tab = await browser.get(url, new_tab=True)
+    assignment_file_urls = []
+    async def fetch_file_urls(assignment_page_url):
+        assignment_page_tab = await browser.get(assignment_page_url, new_tab=True)
         try:
             assignment_file_button = await assignment_page_tab.wait_for(
-                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=10
+                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=100
             )
             assignment_file_buttons = await assignment_page_tab.query_selector_all(
                 "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
             )
-            assignment_file_urls = [
+            assignment_file_urls_current = [
                 btn.__getattr__("href") for btn in assignment_file_buttons
             ]
-            if not page_url_to_file_url.get(url):
-                page_url_to_file_url[url] = []
-            page_url_to_file_url[url].append(assignment_file_urls)
+            assignment_file_urls.append(assignment_file_urls_current)
 
         except TimeoutError:
-            print("No attachment found for assignment with url: ", url)
-            continue
-    return page_url_to_file_url
+            print("No attachment found for assignment with url: ", assignment_page_url)
+
+        await assignment_page_tab.close()
+
+    await asyncio.gather(*[fetch_file_urls(assignment_page_url) for assignment_page_url in assignment_page_urls])
+    assignment_metadata["assignment_file_urls"] = assignment_file_urls
+    print(assignment_metadata)
+    return assignment_metadata
+
 
 
 async def main():
