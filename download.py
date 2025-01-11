@@ -2,10 +2,7 @@ import nodriver as uc
 import os
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from dotenv import load_dotenv
-import requests
 from asyncio import TimeoutError
-import random
-import string
 load_dotenv()
 
 SLEEP_MULTIPLIER = 1
