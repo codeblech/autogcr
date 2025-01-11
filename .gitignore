@@ -3,3 +3,4 @@
 __pycache__
 user
 venv
+*.pdf
