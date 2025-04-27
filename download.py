@@ -1,42 +1,55 @@
 import nodriver as uc
+import pathlib
 import os
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from dotenv import load_dotenv
 from asyncio import TimeoutError
+from uuid import uuid4
 load_dotenv()
 
-SLEEP_MULTIPLIER = 1
+SLEEP_MULTIPLIER = 0.6
 
 BASE_URL = "https://classroom.google.com"
 email = os.environ.get("EMAIL")
 password = os.environ.get("PASSWORD")
-download_directory = os.environ.get("DEFAULT_DOWNLOAD_DIRECTORY")
+download_directory = pathlib.Path(os.environ.get("DEFAULT_DOWNLOAD_DIRECTORY"))
+
+
+def get_drive_download_link(view_link):
+    file_id = view_link.split('/d/')[1].split('/')[0]
+    direct_link = (
+        f"https://drive.usercontent.google.com/u/0/uc?id={file_id}&export=download"
+    )
+    return direct_link
 
 
 async def perform_login(tab):
-    email_input_box = await tab.select("input[type=email]")
-    print("sending email keys")
-    await email_input_box.send_keys(email)
-    await tab.sleep(2 * SLEEP_MULTIPLIER)
-    next_button = await tab.find("Next", best_match=True)
-    print("clicking next button")
-    await next_button.mouse_click()
+    try:
+        email_input_box = await tab.select("input[type=email]")
+        print("sending email keys")
+        await email_input_box.send_keys(email)
+        await tab.sleep(2 * SLEEP_MULTIPLIER)
+        next_button = await tab.find("Next", best_match=True)
+        print("clicking next button")
+        await next_button.mouse_click()
 
-    await tab.sleep(5 * SLEEP_MULTIPLIER)
+        await tab.sleep(5 * SLEEP_MULTIPLIER)
 
-    password_input_box = await tab.select("input[type=password]")
-    print("sending password keys")
-    await password_input_box.send_keys(password)
-    await tab.sleep(2 * SLEEP_MULTIPLIER)
-    next_button = await tab.find("Next", best_match=True)
-    print("clicking next button")
-    await next_button.mouse_click()
-    await tab.sleep(5 * SLEEP_MULTIPLIER)
+        password_input_box = await tab.select("input[type=password]")
+        print("sending password keys")
+        await password_input_box.send_keys(password)
+        await tab.sleep(2 * SLEEP_MULTIPLIER)
+        next_button = await tab.find("Next", best_match=True)
+        print("clicking next button")
+        await next_button.mouse_click()
+        await tab.sleep(5 * SLEEP_MULTIPLIER)
 
-    if await tab.find("2-Step Verification", best_match=True):
-        print("Please perform 2-Step Verification manually")
-        # loading spinner
-
+        if await tab.find("2-Step Verification", best_match=True):
+            print("Please perform 2-Step Verification manually")
+            # loading spinner
+    except TimeoutError:
+        # this is the case where the user is logged out probably due to inactivity. there appears a 'use another account' button.
+        pass
 
 async def get_assignment_page_urls(tab):
     while True:
@@ -82,15 +95,16 @@ async def get_assignment_page_urls(tab):
 
         except TimeoutError as e:
             print("Checking if we're logged in")
-            check1 = await tab.wait_for(text="To-do", timeout=10 * SLEEP_MULTIPLIER)
-            check2 = await tab.wait_for(text="Assigned", timeout=10 * SLEEP_MULTIPLIER)
-            if check1 and check2:
-                print("We're logged in. No assignments found")
-                return
-
-            print("Logging In")
-            await perform_login(tab)
-            continue
+            try:
+                check1 = await tab.wait_for(text="To-do", timeout=10 * SLEEP_MULTIPLIER)
+                check2 = await tab.wait_for(text="Assigned", timeout=10 * SLEEP_MULTIPLIER)
+                if check1 and check2:
+                    print("We're logged in. No assignments found")
+                    return
+            except TimeoutError:
+                print("Logging In")
+                await perform_login(tab)
+                continue
 
 
 async def get_assignment_file_urls(browser, assignment_metadata):
@@ -128,7 +142,7 @@ async def main():
         browser_executable_path="/usr/bin/google-chrome",
         # sandbox=False,
     )
-    tab = await browser.get(missing_endpoint)
+    tab = await browser.get(not_turned_in_endpoint)
 
     assignment_metadata = await get_assignment_page_urls(tab)
     # tab.close()
@@ -141,21 +155,13 @@ async def main():
     ):
         assignment_file_names_current = []
         for assignment_file_url in assignment_file_urls:
-            file_tab = await browser.get(assignment_file_url, new_tab=True)
-            try:
-                download_button = await file_tab.wait_for(selector="div.ndfHFb-c4YZDc-Bz112c.ndfHFb-c4YZDc-C7uZwb-LgbsSe-Bz112c.ndfHFb-c4YZDc-nupQLb-Bz112c", timeout=10 * SLEEP_MULTIPLIER)
-                await browser.wait(5 * SLEEP_MULTIPLIER)
-                assignment_file_name_tag = await file_tab.query_selector(
-                    selector="meta[property='og:title']"
-                )
-                assignment_file_name = assignment_file_name_tag.__getattr__("content")
-                assignment_file_names_current.append(assignment_file_name)
+            assignment_file_url = get_drive_download_link(assignment_file_url)
 
-                await download_button.mouse_click()
-                await browser.wait(5 * SLEEP_MULTIPLIER)
-            except TimeoutError:
-                print("No download button found for file with url: ", assignment_file_url)
-                continue
+            await tab.set_download_path(download_directory) # this can be set on the basis of subject name
+            # The following line does not work.
+            # await tab.download_file(get_drive_download_link(assignment_file_url), name)
+            # So we rather open a new tab and that automatically downloads the file.
+            file_tab = await browser.get(assignment_file_url, new_tab=True)
 
         assignment_file_names.append(assignment_file_names_current)
 
