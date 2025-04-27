@@ -1,0 +1,1 @@
+when switching google accounts, you need to delete the `user` directory in the root directory.

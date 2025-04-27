@@ -133,10 +133,26 @@ async def get_assignment_file_urls(browser, assignments: list[Assignment]):
         assignment_page_tab = await browser.get(
             assignment.assignment_details_page_url, new_tab=True
         )
+
+        # Wait for instructions first - this ensures page is loaded
         try:
-            # Wait for the button to appear (this is a proxy for page loaded state)
+            instructions_element = await assignment_page_tab.wait_for(
+                selector="div.nGi02b.tLDEHd.j70YMc", timeout=10 * SLEEP_MULTIPLIER
+            )
+            if instructions_element:
+                assignment.assignment_instructions = instructions_element.text
+
+        except TimeoutError:
+            print("No instructions found - timeout waiting for instructions element")
+            assignment.assignment_instructions = "No instructions found"
+        except Exception as e:
+            print(f"Error getting instructions: {e}")
+            assignment.assignment_instructions = "Error getting instructions"
+
+        # Then try to get attachments
+        try:
             assignment_file_button = await assignment_page_tab.wait_for(
-                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=10 * SLEEP_MULTIPLIER
+                selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=3 * SLEEP_MULTIPLIER
             )
             assignment_file_buttons = await assignment_page_tab.query_selector_all(
                 "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
@@ -144,7 +160,6 @@ async def get_assignment_file_urls(browser, assignments: list[Assignment]):
             assignment.assignment_doc_urls = [
                 btn.__getattr__("href") for btn in assignment_file_buttons
             ]
-
         except TimeoutError:
             assignment.assignment_doc_urls = []
             print(
@@ -168,18 +183,18 @@ async def download_assignment_files(tab, browser, assignments: list[Assignment])
 
         await tab.set_download_path(
             download_directory_current
-        )  # this can be set on the basis of subject name
+        )
         print(assignment_doc_local_path)
 
         for assignment_file_url in assignment.assignment_doc_urls:
             assignment_file_url = get_drive_download_link(assignment_file_url)
 
-            # The following line does not work.
+            # tab.download_file does not work here.
             # await tab.download_file(get_drive_download_link(assignment_file_url), name)
             # So we rather open a new tab and that automatically downloads the file.
             download_tab = await tab.get(assignment_file_url, new_tab=True)
+            # a sleep is needed here to ensure the file is downloaded in the right directory. if we don't wait, the download directory is changed in the next iteration before the file is downloaded.
             await download_tab.sleep(8 * SLEEP_MULTIPLIER)
-
 
 
 async def main():
