@@ -4,7 +4,8 @@ import os
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from dotenv import load_dotenv
 from asyncio import TimeoutError
-from uuid import uuid4
+from models import Assignment
+
 load_dotenv()
 
 SLEEP_MULTIPLIER = 0.6
@@ -16,7 +17,7 @@ download_directory = pathlib.Path(os.environ.get("DEFAULT_DOWNLOAD_DIRECTORY"))
 
 
 def get_drive_download_link(view_link):
-    file_id = view_link.split('/d/')[1].split('/')[0]
+    file_id = view_link.split("/d/")[1].split("/")[0]
     direct_link = (
         f"https://drive.usercontent.google.com/u/0/uc?id={file_id}&export=download"
     )
@@ -51,11 +52,11 @@ async def perform_login(tab):
         # this is the case where the user is logged out probably due to inactivity. there appears a 'use another account' button.
         pass
 
+
 async def get_assignment_page_urls(tab):
     while True:
         try:
-            # assignment_button = await tab.wait_for(selector="a.nUg0Te", timeout=10)
-            # assignment_buttons = await tab.query_selector_all("a.nUg0Te")
+            # Wait for the assignment button to appear (this is a proxy for page loaded state)
             assignment_button = await tab.wait_for(
                 selector="li.MHxtic.QRiHXd", timeout=10 * SLEEP_MULTIPLIER
             )
@@ -86,18 +87,38 @@ async def get_assignment_page_urls(tab):
                 date.text if date is not None else "No due date"
                 for date in assignment_due_dates
             ]
-            assignment_metadata = {
-                "assignment_names": assignment_names,
-                "assignment_due_dates": assignment_due_dates,
-                "assignment_page_urls": assignment_page_urls,
-            }
-            return assignment_metadata
+
+            # Find classroom names
+            classroom_names = [
+                await btn.query_selector("p.dDKhVc.YVvGBb")
+                for btn in assignment_buttons
+            ]
+            classroom_names = [name.text for name in classroom_names]
+
+            assignments = [
+                Assignment(
+                    assignment_name=name,
+                    due_date_str=due_date,
+                    assignment_details_page_url=url,
+                    classroom_name=classroom_name,
+                )
+                for name, due_date, url, classroom_name in zip(
+                    assignment_names,
+                    assignment_due_dates,
+                    assignment_page_urls,
+                    classroom_names,
+                )
+            ]
+
+            return assignments
 
         except TimeoutError as e:
             print("Checking if we're logged in")
             try:
                 check1 = await tab.wait_for(text="To-do", timeout=10 * SLEEP_MULTIPLIER)
-                check2 = await tab.wait_for(text="Assigned", timeout=10 * SLEEP_MULTIPLIER)
+                check2 = await tab.wait_for(
+                    text="Assigned", timeout=10 * SLEEP_MULTIPLIER
+                )
                 if check1 and check2:
                     print("We're logged in. No assignments found")
                     return
@@ -107,33 +128,58 @@ async def get_assignment_page_urls(tab):
                 continue
 
 
-async def get_assignment_file_urls(browser, assignment_metadata):
-    assignment_page_urls = assignment_metadata["assignment_page_urls"]
-
-    assignment_file_urls = []
-    for assignment_page_url in assignment_page_urls:
-        assignment_page_tab = await browser.get(assignment_page_url, new_tab=True)
+async def get_assignment_file_urls(browser, assignments: list[Assignment]):
+    for assignment in assignments:
+        assignment_page_tab = await browser.get(
+            assignment.assignment_details_page_url, new_tab=True
+        )
         try:
+            # Wait for the button to appear (this is a proxy for page loaded state)
             assignment_file_button = await assignment_page_tab.wait_for(
                 selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=10 * SLEEP_MULTIPLIER
             )
             assignment_file_buttons = await assignment_page_tab.query_selector_all(
                 "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
             )
-            assignment_file_urls.append([
+            assignment.assignment_doc_urls = [
                 btn.__getattr__("href") for btn in assignment_file_buttons
-            ])
-
+            ]
 
         except TimeoutError:
-            assignment_file_urls.append([])
-            print("No attachment found for assignment with url: ", assignment_page_url)
+            assignment.assignment_doc_urls = []
+            print(
+                "No attachment found for assignment with url: ",
+                assignment.assignment_details_page_url,
+            )
 
         await assignment_page_tab.close()
 
-    assignment_metadata["assignment_file_urls"] = assignment_file_urls
+    return assignments
 
-    return assignment_metadata
+
+async def download_assignment_files(tab, browser, assignments: list[Assignment]):
+    for assignment in assignments:
+
+        download_directory_current = download_directory / assignment.classroom_name
+        assignment_doc_local_path = (
+            download_directory_current / assignment.assignment_name
+        )
+        assignment.assignment_doc_local_paths.append(assignment_doc_local_path)
+
+        await tab.set_download_path(
+            download_directory_current
+        )  # this can be set on the basis of subject name
+        print(assignment_doc_local_path)
+
+        for assignment_file_url in assignment.assignment_doc_urls:
+            assignment_file_url = get_drive_download_link(assignment_file_url)
+
+            # The following line does not work.
+            # await tab.download_file(get_drive_download_link(assignment_file_url), name)
+            # So we rather open a new tab and that automatically downloads the file.
+            download_tab = await tab.get(assignment_file_url, new_tab=True)
+            await download_tab.sleep(8 * SLEEP_MULTIPLIER)
+
 
 
 async def main():
@@ -142,33 +188,16 @@ async def main():
         browser_executable_path="/usr/bin/google-chrome",
         # sandbox=False,
     )
-    tab = await browser.get(not_turned_in_endpoint)
+    tab = await browser.get(missing_endpoint)
 
-    assignment_metadata = await get_assignment_page_urls(tab)
-    # tab.close()
-    assignment_metadata = await get_assignment_file_urls(browser, assignment_metadata)
-
-    assignment_file_names = []
-    for assignment_name, assignment_file_urls in zip(
-        assignment_metadata["assignment_names"],
-        assignment_metadata["assignment_file_urls"],
-    ):
-        assignment_file_names_current = []
-        for assignment_file_url in assignment_file_urls:
-            assignment_file_url = get_drive_download_link(assignment_file_url)
-
-            await tab.set_download_path(download_directory) # this can be set on the basis of subject name
-            # The following line does not work.
-            # await tab.download_file(get_drive_download_link(assignment_file_url), name)
-            # So we rather open a new tab and that automatically downloads the file.
-            file_tab = await browser.get(assignment_file_url, new_tab=True)
-
-        assignment_file_names.append(assignment_file_names_current)
-
-    assignment_metadata["assignment_file_names"] = assignment_file_names
-    print(assignment_metadata)
+    assignments = await get_assignment_page_urls(tab)
+    print(assignments)
+    assignments = await get_assignment_file_urls(browser, assignments)
+    print(assignments)
+    await download_assignment_files(tab, browser, assignments)
 
     await browser.wait(1000)
+
 
 if __name__ == "__main__":
 
