@@ -220,7 +220,7 @@ async def main():
         browser_executable_path="/usr/bin/google-chrome",
         # sandbox=False,
     )
-    tab = await browser.get(missing_endpoint)
+    tab = await browser.get(not_turned_in_endpoint)
 
     assignments = await get_assignment_page_urls(tab)
     assignments = await get_assignment_file_urls(browser, assignments)

@@ -33,12 +33,13 @@ async def upload_assignment_files(browser, assignments: list[Assignment]):
         except TimeoutError:
             print("No upload tab button found")
 
-        file_input_element = await tab.select("input")
-        await file_input_element.send_files(*assignment.assignment_doc_local_paths)
+        file_input_parent_div = await tab.find("or drag files here", best_match=True)
+        file_input_element = await file_input_parent_div.children[0].children[1]
+        await file_input_element.send_file(*assignment.assignment_doc_local_paths)
         await tab.sleep(10 * SLEEP_MULTIPLIER)
 
         mark_as_done_button = await tab.wait_for(
-            selector="button[guidedhelpid='submissionManager_markAsDone']",
+            selector="button[guidedhelpid='turnInButton']",
             timeout=10 * SLEEP_MULTIPLIER,
         )
         while mark_as_done_button.disabled:
