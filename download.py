@@ -59,7 +59,7 @@ async def get_assignment_page_urls(tab):
         try:
             # Wait for the assignment button to appear (this is a proxy for page loaded state)
             assignment_button = await tab.wait_for(
-                selector="li.MHxtic.QRiHXd", timeout=10 * SLEEP_MULTIPLIER
+                selector="li.MHxtic.QRiHXd", timeout=20 * SLEEP_MULTIPLIER
             )
             assignment_buttons = await tab.query_selector_all("li.MHxtic.QRiHXd")
 
