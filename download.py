@@ -5,6 +5,7 @@ from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoi
 from dotenv import load_dotenv
 from asyncio import TimeoutError
 from models import Assignment
+from upload import upload_assignment_files
 
 load_dotenv()
 
@@ -151,12 +152,30 @@ async def get_assignment_file_urls(browser, assignments: list[Assignment]):
 
         # Then try to get attachments
         try:
+            # This assignment_file_button is to check if the page has loaded the attachments.
             assignment_file_button = await assignment_page_tab.wait_for(
                 selector="a.vwNuXe.JkIgWb.QRiHXd.yixX5e", timeout=3 * SLEEP_MULTIPLIER
             )
-            assignment_file_buttons = await assignment_page_tab.query_selector_all(
-                "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
+
+            assignment_file_buttons = []
+            all_attachment_divs = await assignment_page_tab.query_selector_all(
+                "div.r0VQac.QRiHXd.Aopndd"
             )
+            # check which attachment does not have a cross button. the ones that have a cross button are the ones that are user uploaded.
+            for attachment_div in all_attachment_divs:
+                for child in attachment_div.children:
+                    if child.tag_name == "div" and child.children:
+                        break
+                    elif child.tag_name == "a":
+                        continue
+                    else:
+                        assignment_file_buttons.append(
+                            await attachment_div.query_selector(
+                                "a.vwNuXe.JkIgWb.QRiHXd.yixX5e"
+                            )
+                        )
+                        break
+
             assignment.assignment_doc_urls = [
                 btn.__getattr__("href") for btn in assignment_file_buttons
             ]
@@ -181,9 +200,7 @@ async def download_assignment_files(tab, browser, assignments: list[Assignment])
         )
         assignment.assignment_doc_local_paths.append(assignment_doc_local_path)
 
-        await tab.set_download_path(
-            download_directory_current
-        )
+        await tab.set_download_path(download_directory_current)
         print(assignment_doc_local_path)
 
         for assignment_file_url in assignment.assignment_doc_urls:
@@ -206,10 +223,15 @@ async def main():
     tab = await browser.get(missing_endpoint)
 
     assignments = await get_assignment_page_urls(tab)
-    print(assignments)
     assignments = await get_assignment_file_urls(browser, assignments)
     print(assignments)
     await download_assignment_files(tab, browser, assignments)
+
+    sample_path = pathlib.Path("w2.pdf")
+    for assignment in assignments:
+        assignment.assignment_doc_local_paths = [sample_path]
+
+    await upload_assignment_files(browser, assignments)
 
     await browser.wait(1000)
 
