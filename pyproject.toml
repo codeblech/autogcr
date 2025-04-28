@@ -11,8 +11,7 @@ nodriver = "^0.38.post1"
 python-dotenv = "^1.0.1"
 requests = "^2.32.3"
 hrequests = "^0.9.2"
-google-generativeai = "^0.8.3"
-google-genai = "^0.4.0"
+google-genai = "^1.12.1"
 
 
 [build-system]
