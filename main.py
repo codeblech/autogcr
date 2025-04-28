@@ -21,13 +21,10 @@ async def main():
     await manager.initialize_browser()
 
     try:
-        # Get and process assignments
-        assignments = await manager.get_assignment_page_urls()
-        if assignments:
-            # Get file URLs and download files
-            assignments = await manager.get_assignment_file_urls(assignments)
-            await manager.download_assignment_files(assignments)
+        # Download assignments and their files
+        assignments = await manager.download_assignment_files()
 
+        if assignments:
             # TODO: Replace this with actual solution file paths
             # For testing purposes - using a sample path
             sample_path = pathlib.Path("w2.pdf")

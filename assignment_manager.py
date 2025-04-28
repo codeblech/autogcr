@@ -72,8 +72,8 @@ class AssignmentManager:
             # User is logged out due to inactivity
             pass
 
-    async def get_assignment_page_urls(self) -> Optional[List[Assignment]]:
-        """Fetch and parse assignment URLs and details from the main page."""
+    async def _get_assignment_page_urls(self) -> Optional[List[Assignment]]:
+        """Internal method to fetch and parse assignment URLs and details from the main page."""
         while True:
             try:
                 # Wait for the assignment button to appear (this is a proxy for page loaded state)
@@ -152,10 +152,10 @@ class AssignmentManager:
                     await self.perform_login()
                     continue
 
-    async def get_assignment_file_urls(
+    async def _get_assignment_file_urls(
         self, assignments: List[Assignment]
     ) -> List[Assignment]:
-        """Fetch file URLs and instructions for each assignment."""
+        """Internal method to fetch file URLs and instructions for each assignment."""
         for assignment in assignments:
             assignment_page_tab = await self.browser.get(
                 assignment.assignment_details_page_url, new_tab=True
@@ -220,31 +220,48 @@ class AssignmentManager:
 
         return assignments
 
-    async def download_assignment_files(self, assignments: List[Assignment]) -> None:
-        """Download files for each assignment."""
-        for assignment in assignments:
-            download_directory_current = (
-                self.config.download_directory / assignment.classroom_name
-            )
-            assignment_doc_local_path = (
-                download_directory_current / assignment.assignment_name
-            )
-            assignment.assignment_doc_local_paths.append(assignment_doc_local_path)
+    async def download_assignment_files(self) -> Optional[List[Assignment]]:
+        """Download files for each assignment.
 
-            await self.current_tab.set_download_path(download_directory_current)
-            print(assignment_doc_local_path)
+        This method handles the complete process of:
+        1. Getting assignment page URLs
+        2. Fetching file URLs and instructions
+        3. Downloading the actual files
 
-            for assignment_file_url in assignment.assignment_doc_urls:
-                assignment_file_url = self._get_drive_download_link(assignment_file_url)
+        Returns:
+            Optional[List[Assignment]]: List of assignments with downloaded files, or None if no assignments found
+        """
+        assignments = await self._get_assignment_page_urls()
+        if assignments:
+            assignments = await self._get_assignment_file_urls(assignments)
 
-                # tab.download_file does not work here.
-                # await tab.download_file(get_drive_download_link(assignment_file_url), name)
-                # So we rather open a new tab and that automatically downloads the file.
-                download_tab = await self.current_tab.get(
-                    assignment_file_url, new_tab=True
+            for assignment in assignments:
+                download_directory_current = (
+                    self.config.download_directory / assignment.classroom_name
                 )
-                # a sleep is needed here to ensure the file is downloaded in the right directory. if we don't wait, the download directory is changed in the next iteration before the file is downloaded.
-                await download_tab.sleep(8 * self.config.sleep_multiplier)
+                assignment_doc_local_path = (
+                    download_directory_current / assignment.assignment_name
+                )
+                assignment.assignment_doc_local_paths.append(assignment_doc_local_path)
+
+                await self.current_tab.set_download_path(download_directory_current)
+                print(assignment_doc_local_path)
+
+                for assignment_file_url in assignment.assignment_doc_urls:
+                    assignment_file_url = self._get_drive_download_link(
+                        assignment_file_url
+                    )
+
+                    # tab.download_file does not work here.
+                    # await tab.download_file(get_drive_download_link(assignment_file_url), name)
+                    # So we rather open a new tab and that automatically downloads the file.
+                    download_tab = await self.current_tab.get(
+                        assignment_file_url, new_tab=True
+                    )
+                    # a sleep is needed here to ensure the file is downloaded in the right directory. if we don't wait, the download directory is changed in the next iteration before the file is downloaded.
+                    await download_tab.sleep(8 * self.config.sleep_multiplier)
+
+        return assignments
 
     async def upload_assignment_files(self, assignments: List[Assignment]) -> None:
         """Upload completed assignments."""
