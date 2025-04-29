@@ -11,4 +11,10 @@ quirks:
   - llm should decide whether to show output of code as a screenshot or not
   - white text on a black background with some syntax highlighting looks like a screenshot
   - we can use `pygments` to get the syntax highlighting
-  
+
+
+- todo
+  - cli
+  - if attachment is docx, we should convert it to pdf first
+  - after turning in an assignment, check presence of 'unsubmit' button to verify that the assignment was turned in
+  - Markdown2docx can't covert code blocks to docx, so we should use a different library

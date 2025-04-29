@@ -114,7 +114,7 @@ class Packer:
             output_file_path (Path): The output docx file path.
         """
         output_file_path = convert_markdown_to_docx(
-            self.solution_text, output_file_path=output_file_path, is_file=False
+            self.solution_text, output_file_path=output_file_path, input_is_file=False
         )
         return output_file_path
 

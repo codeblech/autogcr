@@ -195,6 +195,14 @@ class AssignmentManager:
                 assignment.assignment_doc_urls = [
                     btn.__getattr__("href") for btn in assignment_file_buttons
                 ]
+                assignment_doc_names = [
+                    await btn.query_selector("div.A6dC2c.QDKOcc.onkcGd.UtdKPb")
+                    for btn in assignment_file_buttons
+                ]
+                assignment.assignment_doc_names = [
+                    name.text if name is not None else "No name"
+                    for name in assignment_doc_names
+                ]
             except TimeoutError:
                 assignment.assignment_doc_urls = []
                 print(
@@ -225,13 +233,15 @@ class AssignmentManager:
                 download_directory_current = (
                     self.config.download_directory / assignment.classroom_name
                 )
-                assignment_doc_local_path = (
-                    download_directory_current / assignment.assignment_name
+
+                assignment.assignment_doc_local_paths.extend(
+                    [
+                        download_directory_current / name
+                        for name in assignment.assignment_doc_names
+                    ]
                 )
-                assignment.assignment_doc_local_paths.append(assignment_doc_local_path)
 
                 await self.current_tab.set_download_path(download_directory_current)
-                print(assignment_doc_local_path)
 
                 for assignment_file_url in assignment.assignment_doc_urls:
                     assignment_file_url = self._get_drive_download_link(
@@ -294,7 +304,7 @@ class AssignmentManager:
                 "or drag files here", best_match=True
             )
             file_input_element = await file_input_parent_div.children[0].children[1]
-            await file_input_element.send_file(*assignment.assignment_doc_local_paths)
+            await file_input_element.send_file(assignment.solution_doc_local_path)
             await tab.sleep(20 * self.config.sleep_multiplier)
 
             turn_in_button = await tab.wait_for(

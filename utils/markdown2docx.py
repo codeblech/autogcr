@@ -13,6 +13,7 @@ from PIL import Image
 from docx.oxml.shared import OxmlElement, qn
 from html.parser import HTMLParser
 from .preprocess_markdown2docx import PreprocessMarkdown2docx
+from pathlib import Path
 
 
 class HtmlListParser(HTMLParser):
@@ -280,20 +281,22 @@ class Markdown2docx:
         self.doc.save(self.outfile)
 
 
-def convert_markdown_to_docx(markdown_input, output_file_path=None, is_file=True):
+def convert_markdown_to_docx(
+    markdown_input: str, output_file_path: Path = None, input_is_file=True
+) -> Path:
     """Convert markdown to docx.
 
     Args:
         markdown_input (str): Either a file path without extension (if is_file=True)
                             or markdown text content (if is_file=False)
-        output_file_path (str, optional): Path for the output docx file.
+        output_file_path (Path, optional): Path for the output docx file.
                                    If None, uses input name for files or 'output.docx' for text.
         is_file (bool): Whether markdown_input is a file path (True) or markdown text (False)
 
     Returns:
         str: Path to the generated docx file
     """
-    if is_file:
+    if input_is_file:
         # Handle file-based input (original behavior)
         ppm2w = PreprocessMarkdown2docx(markdown_input)
         markdown = ppm2w.get_all_but_macros()
@@ -303,10 +306,13 @@ def convert_markdown_to_docx(markdown_input, output_file_path=None, is_file=True
         # Handle direct text input
         markdown = markdown_input
 
+    # Make sure output file path exists
+    output_file_path.parent.mkdir(parents=True, exist_ok=True)
+
     # Convert to docx
     converter = Markdown2docx(
-        markdown_input, is_file=is_file, output_file=output_file_path
+        markdown_input, is_file=input_is_file, output_file=str(output_file_path)
     )
     converter.convert()
     converter.save()
-    return converter.outfile
+    return Path(converter.outfile)

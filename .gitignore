@@ -5,3 +5,4 @@ user
 venv
 *.pdf
 *.docx
+*.log

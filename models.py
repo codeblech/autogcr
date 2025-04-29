@@ -15,6 +15,7 @@ class Assignment:
     faculty_name: str = None
     assignment_instructions: str = None
     assignment_doc_urls: list[str] = field(default_factory=list)
+    assignment_doc_names: list[str] = field(default_factory=list)
     assignment_doc_local_paths: list[Path] = field(default_factory=list)
     solution_text: str = None
     solution_doc_local_path: Path = None
