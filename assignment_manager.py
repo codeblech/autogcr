@@ -1,23 +1,9 @@
 import nodriver as uc
-import pathlib
 from typing import Optional, List
 from dataclasses import dataclass
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from asyncio import TimeoutError
-from models import Assignment
-
-
-@dataclass
-class GoogleClassroomConfig:
-    """Configuration class for Google Classroom automation."""
-
-    email: str
-    password: str
-    download_directory: pathlib.Path
-    browser_executable_path: str = "/usr/bin/google-chrome"
-    user_data_dir: str = "./user"
-    sleep_multiplier: float = 0.6
-    base_url: str = "https://classroom.google.com"
+from models import Assignment, GoogleClassroomConfig
 
 
 class AssignmentManager:

@@ -3,11 +3,11 @@ from google.genai import types
 from google import genai
 from dotenv import load_dotenv
 import os
-import base64
 from pathlib import Path
 from typing import List
 from models import Assignment
 from prompts import solve_prompt, system_prompt
+from models import GeminiModel
 
 load_dotenv()
 
@@ -17,27 +17,7 @@ class Solver:
 
     def __init__(self):
         """Initialize the Solver with Gemini configuration."""
-        genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
         self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-    def _encode_file(self, file_path: Path) -> dict:
-        """Encode a file to base64 and return it in the format expected by Gemini.
-
-        Args:
-            file_path (Path): Path to the file to encode
-
-        Returns:
-            dict: Dictionary containing mime_type and base64 encoded data
-        """
-        with open(file_path, "rb") as file:
-            data = base64.standard_b64encode(file.read()).decode("utf-8")
-            # Determine mime type based on file extension
-            mime_type = (
-                "application/pdf"
-                if file_path.suffix == ".pdf"
-                else "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
-            return {"mime_type": mime_type, "data": data}
 
     def solve_assignment(self, assignment: Assignment) -> str:
         """Solve a single assignment using the Gemini model.
@@ -68,12 +48,12 @@ class Solver:
 
         # Generate the solution
         response = self.client.models.generate_content(
-            model="gemini-2.0-flash-lite",
+            model=GeminiModel.FLASH_2_5_PREVIEW.value,
             contents=context,
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
                 temperature=0.9,
-                max_output_tokens=2048,
+                max_output_tokens=100_000,
             ),
         )
         return response.text
@@ -100,11 +80,14 @@ class Solver:
 
 if __name__ == "__main__":
     solver = Solver()
-    model = solver.model
     print(
         solver.solve_assignment(
             Assignment(
-                name="w2", instructions="Solve this assignment", doc_paths=["w2.pdf"]
+                assignment_name="w2",
+                due_date_str="2025-04-29",
+                assignment_details_page_url="www.google.com",
+                assignment_instructions="Solve this assignment",
+                assignment_doc_local_paths=[Path("w2.pdf")],
             )
         )
     )
