@@ -29,14 +29,13 @@ async def main():
 
     try:
         # Download assignments and their files
-        logger.info("Starting assignment download")
+        logger.info("Starting assignment download procedure")
         assignments = await manager.download_assignment_files()
         logger.info(f"Downloaded {len(assignments)} assignments")
         logger.info(f"Assignments: \n{assignments}")
 
         # Solve assignments
         for assignment in assignments:
-            logger.info(f"Solving assignment: {assignment.assignment_name}")
             solver = SimpleSolver()
             assignment.solution_doc_local_path = solver.solve_assignment(assignment)
 

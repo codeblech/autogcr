@@ -17,6 +17,7 @@ markdown2 = "^2.5.3"
 pillow = "^11.2.1"
 beautifulsoup4 = "^4.13.4"
 loguru = "^0.7.3"
+pypandoc = "^1.15"
 
 
 [build-system]

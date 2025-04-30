@@ -1,6 +1,7 @@
 # make the downloading, solving, and uploading code asynchronous
 from google.genai import types
 from google import genai
+import pypandoc
 from dotenv import load_dotenv
 from loguru import logger
 import os
@@ -10,7 +11,7 @@ from models import Assignment
 from prompts import solve_prompt, system_prompt
 from models import GeminiModel
 from abc import ABC, abstractmethod
-from utils.markdown2docx import convert_markdown_to_docx
+from utils.utils import ensure_pandoc_installed
 
 load_dotenv()
 
@@ -43,7 +44,24 @@ class SimpleSolver(Solver):
         super().__init__()
         logger.info("Initialized SimpleSolver")
 
+    def _convert_to_docx(self, solution_text: str, output_file_path: Path):
+        """Convert solution text to DOCX format and save it to the given path.
+
+        Args:
+            solution_text (str): Solution text in markdown format
+            output_file_path (Path): Path where to save the DOCX file
+
+        """
+        logger.info(f"Converting solution to DOCX: {output_file_path}")
+        # Ensure the output directory exists
+        output_file_path.parent.mkdir(parents=True, exist_ok=True)
+        pypandoc.convert_text(
+            solution_text, "docx", format="md", outputfile=str(output_file_path)
+        )
+        logger.success(f"Successfully generated solution docx file: {output_file_path}")
+
     def solve_assignment(self, assignment: Assignment) -> Path:
+        ensure_pandoc_installed()
         logger.info(f"Starting to solve assignment: {assignment.assignment_name}")
         # Prepare the context for the model
         context = [solve_prompt]
@@ -89,11 +107,14 @@ class SimpleSolver(Solver):
                 / f"{assignment.assignment_name}_solution.docx"
             )
             logger.info(f"Converting solution to DOCX: {output_file_path}")
-            solution_docx_path = convert_markdown_to_docx(
-                solution_text, output_file_path=output_file_path, input_is_file=False
+
+            self._convert_to_docx(solution_text, output_file_path)
+
+            logger.success(
+                f"Successfully generated solution docx file: {output_file_path}"
             )
-            logger.success(f"Successfully generated solution: {solution_docx_path}")
-            return solution_docx_path
+            return output_file_path
+
         except Exception as e:
             logger.error(f"Error generating solution: {str(e)}")
             raise
@@ -105,6 +126,7 @@ if __name__ == "__main__":
         solver.solve_assignment(
             Assignment(
                 assignment_name="w2",
+                classroom_name="w2",
                 due_date_str="2025-04-29",
                 assignment_details_page_url="www.google.com",
                 assignment_instructions="Solve this assignment",
