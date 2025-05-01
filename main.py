@@ -4,7 +4,7 @@ import nodriver as uc
 from dotenv import load_dotenv
 from loguru import logger
 from assignment_manager import AssignmentManager, GoogleClassroomConfig
-from solve import SimpleSolver
+from solvers.simple_solver import SimpleSolver
 
 load_dotenv()
 

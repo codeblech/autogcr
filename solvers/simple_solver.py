@@ -1,4 +1,3 @@
-# make the downloading, solving, and uploading code asynchronous
 from google.genai import types
 from google import genai
 import pypandoc
@@ -6,35 +5,14 @@ from dotenv import load_dotenv
 from loguru import logger
 import os
 from pathlib import Path
-from typing import List
 from models import Assignment
 from prompts import solve_prompt, system_prompt
 from models import GeminiModel
-from abc import ABC, abstractmethod
 from utils.utils import ensure_pandoc_installed
+from solve import Solver
+
 
 load_dotenv()
-
-
-class Solver(ABC):
-    """Class to handle solving assignments using Gemini API."""
-
-    def __init__(self):
-        """Initialize the Solver with Gemini configuration."""
-        logger.info("Initializing Solver with Gemini API")
-        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
-
-    @abstractmethod
-    def solve_assignment(self, assignment: Assignment) -> Path:
-        """Abstract method to solve an assignment. It takes an assignment object and returns a path to the generated solution docx file.
-
-        Args:
-            assignment (Assignment): Assignment object containing instructions and files
-
-        Returns:
-            Path: Path to the generated solution file (PDF, DOCX, etc.)
-        """
-        pass
 
 
 class SimpleSolver(Solver):
@@ -42,6 +20,7 @@ class SimpleSolver(Solver):
 
     def __init__(self):
         super().__init__()
+        self.client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
         logger.info("Initialized SimpleSolver")
 
     def _convert_docx_to_pdf(self, docx_file_path: Path) -> Path:
@@ -84,7 +63,7 @@ class SimpleSolver(Solver):
         # Clean up the intermediate HTML file
         html_file_path.unlink(missing_ok=True)
         Path("./temp").unlink(missing_ok=True)
-        
+
         return pdf_file_path
 
     def _convert_solution_to_docx(self, solution_text: str, output_file_path: Path):
