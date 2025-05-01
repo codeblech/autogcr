@@ -28,6 +28,7 @@ class AssignmentManager:
             user_data_dir=self.config.user_data_dir,
             browser_executable_path=self.config.browser_executable_path,
         )
+
         self.current_tab = await self.browser.get(missing_endpoint)
 
     async def perform_login(self) -> None:

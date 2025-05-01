@@ -39,6 +39,6 @@ class GeminiModel(enum.Enum):
     """If new models are added, add them to the enum."""
 
     FLASH_2_5_PREVIEW = "gemini-2.5-flash-preview-04-17"
-    PRO_2_5_PREVIEW = "gemini-2.5-pro-preview-03-25"
+    PRO_2_5_PREVIEW = "gemini-2.5-pro-exp-03-25"
     FLASH_2_0 = "gemini-2.0-flash"
     FLASH_LITE_2_0 = "gemini-2.0-flash-lite"

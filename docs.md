@@ -12,6 +12,7 @@ quirks:
   - white text on a black background with some syntax highlighting looks like a screenshot
   - we can use `pygments` to get the syntax highlighting
 
+- gemini doesn't support docx files, so we need to convert them first. docx can contain images, so we can't use markdown. we need to convert them to pdf or images.
 
 - todo
   - cli
