@@ -24,11 +24,5 @@
 > Typst is required to convert docx assignment attachments to pdf.
 > If installation fails, refer to [this](https://github.com/typst-community/typst-install)
 
-3. Create a `.env` file and set the `GEMINI_API_KEY` environment variable:
+3. Create a `.env` file using the `.env.example` file:
 
-    ```bash
-    EMAIL=<your-email>
-    PASSWORD=<your-password>
-    DEFAULT_DOWNLOAD_DIRECTORY ="./downloads"
-    GEMINI_API_KEY=<your-gemini-api-key>
-    ```

@@ -8,3 +8,4 @@ venv
 *.log
 downloads
 temp
+!.env.example
