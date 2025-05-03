@@ -4,6 +4,9 @@ __pycache__
 user
 venv
 *.pdf
+*.png
+*.jpeg
+*.jpg
 *.docx
 *.log
 downloads

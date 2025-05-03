@@ -264,6 +264,7 @@ class PaperFaker:
         )
         image = cv2.imread(image_path)
         augmented_image = pipeline(image)
+        print(augmented_image.shape)
         return augmented_image
 
     def get_realistic_page_images(self, image_paths: list[Path]) -> list[np.ndarray]:
@@ -307,3 +308,10 @@ class PaperFaker:
             return True
         else:
             return False
+
+
+if __name__ == "__main__":
+    paper_faker = PaperFaker()
+    image_paths = [p for p in (Path(__file__).parent / "test_files").glob("*.jpeg")]
+    output_file_path = Path(__file__).parent / "test_files" / "realistic_pages.pdf"
+    paper_faker.get_realistic_pages_pdf(image_paths, output_file_path)

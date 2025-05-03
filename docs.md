@@ -19,3 +19,4 @@ quirks:
   - cli
   - more solvers
   - after turning in an assignment, check presence of 'unsubmit' button to verify that the assignment was turned in
+  - use numba to speed up the image generation code
