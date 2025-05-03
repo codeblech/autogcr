@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 from uuid import uuid4, UUID
-import enum
+from enum import Enum
 import pathlib
 
 
@@ -35,7 +35,7 @@ class GoogleClassroomConfig:
     base_url: str = "https://classroom.google.com"
 
 
-class GeminiModel(enum.Enum):
+class GeminiModel(Enum):
     """If new models are added, add them to the enum."""
 
     FLASH_2_5_PREVIEW = "gemini-2.5-flash-preview-04-17"

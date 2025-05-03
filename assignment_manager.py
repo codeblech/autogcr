@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from endpoints import missing_endpoint, turned_in_endpoint, not_turned_in_endpoint
 from asyncio import TimeoutError
 from models import Assignment, GoogleClassroomConfig
+from loguru import logger
 
 
 class AssignmentManager:
@@ -323,4 +324,16 @@ class AssignmentManager:
             turn_in_confirmation_button = buttons_div.children[1]
             print("Clicking confirm button for turnin in")
             await turn_in_confirmation_button.click()
-            await tab.sleep(2 * self.config.sleep_multiplier)
+            
+            # Presence of Unsubmit button indicates that the assignment has been submitted successfully
+            try:
+                unsubmit_button = await tab.find(
+                    "Unsubmit", best_match=True, timeout=10 * self.config.sleep_multiplier
+                )
+                logger.info(
+                    f"Your assignment {assignment.assignment_name} for subject {assignment.classroom_name} has been submitted successfully"
+                )
+            except TimeoutError:
+                logger.error(
+                    f"Your assignment {assignment.assignment_name} for subject {assignment.classroom_name} could not be submitted successfully"
+                )

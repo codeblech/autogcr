@@ -18,6 +18,7 @@ pillow = "^11.2.1"
 beautifulsoup4 = "^4.13.4"
 loguru = "^0.7.3"
 pypandoc = "^1.15"
+augraphy = "^8.2.6"
 
 
 [build-system]
